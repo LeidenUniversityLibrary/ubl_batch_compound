@@ -8,3 +8,8 @@ Go to the URL https://[islandora-server]/ubl_batch_compound and upload a CSV fil
 Once the CSV file is uploaded, a list of potential compound items is displayed, so a review is possible before making changes. Items that are mistakenly found, can be deselected.
 After the review the compound items can be made. Then the changes can be reviewed by clicking on the link of the parent items.
 
+## License
+
+[GPLv3](LICENSE.txt)
+Copyright 2017 Leiden University Library
+
