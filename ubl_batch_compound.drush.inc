@@ -1,14 +1,14 @@
 <?php
 /**
  * @file
- * Functions for exporting Islandora content via drush.
+ * Drush functions.
  *
  *
  *  Copyright 2017 Leiden University Library
  *
- *  This file is part of islandora_export.
+ *  This file is part of ubl_batch_compound.
  *
- *  islandora_export is free software: you can redistribute it and/or modify
+ *  ubl_batch_compound is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
