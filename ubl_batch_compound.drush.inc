@@ -28,7 +28,7 @@
  */
 function ubl_batch_compound_drush_command() {
   $items['ubl_batch_compound_prepare'] = array(
-    'description' => 'Prepare a batch compound CSV file. Based on an existing csv file, this will insert rows with the actual PIDs of the children (and parents if they already exist) and print the new CSV file to output. Then this CSV file can be used with the ubl_batch_compound_using_pids drush command.',
+    'description' => 'Prepare a batch compound CSV file. Based on an existing csv file, this will insert rows with the actual PIDs of the children (and parents if they already exist) and print the new CSV file to output. Then this CSV file can be used with the ubl_batch_compound_generate drush command.',
     'options' => array(
       'csvfile' => 'Mandatory, the absolute filepath of a CSV file. See documentation for the exact format.',
       'solrfield' => 'Optional, specify the Solr field that should be used to search the compound and children by. For example use "mods_identifier_local_s" to only search by identifier local.',
