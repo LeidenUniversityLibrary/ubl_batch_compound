@@ -320,6 +320,7 @@ function ubl_batch_compound_batch_set_children($oneparent2children, $parentid, &
 
   $insert_seq = 0;
   foreach ($compounds as $childid => $info) {
+    $insert_seq++;
     $child_object = $info["object"];
 
     $shouldcommit = FALSE;
