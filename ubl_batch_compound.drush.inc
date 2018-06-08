@@ -98,7 +98,9 @@ function drush_ubl_batch_compound_prepare() {
         }
         foreach ($childs as $cid => $enabled) {
           if ($enabled) {
-            $result .= "$parentthing;$cid;;;$parent;$childlabel\n";
+            $reltype = empty($info["childrentypeinfo"][$cid]["type"])?"":$info["childrentypeinfo"][$cid]["type"];
+            $relvalue = empty($info["childrentypeinfo"][$cid]["info"])?"":$info["childrentypeinfo"][$cid]["info"];
+            $result .= "$parentthing;$cid;$reltype;$relvalue;$parent;$childlabel\n";
           }
         }
       }

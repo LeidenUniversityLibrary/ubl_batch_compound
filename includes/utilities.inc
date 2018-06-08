@@ -63,6 +63,10 @@ function ubl_batch_compound_read_csv($csvfilepath, $logfunction, $onlypids = FAL
           continue;
         }
       }
+      if (count($data) < 2) {
+        $logfunction(t("Unexpected line at @linenr: @line", array("@linenr" => $linenr, "@line" => implode($delimit, $data))), 'warning');
+        continue;
+      }
 
       $parentid = $data[0];
       $childid = $data[1];
@@ -82,6 +86,7 @@ function ubl_batch_compound_read_csv($csvfilepath, $logfunction, $onlypids = FAL
           "parent" => $foundparents,
           "enabled" => TRUE,
           "children" => array(),
+          "childrentypeinfo" => array(),
         );
         if (count($foundparents) == 1) {
           $foundparentid = $foundparents[0];
@@ -115,13 +120,16 @@ function ubl_batch_compound_read_csv($csvfilepath, $logfunction, $onlypids = FAL
         $parent2child[$parentid]["children"][$childid] = array_fill_keys($foundchildren, TRUE);
         $parent2child[$parentid]["childfoundcount"] += count($foundchildren);
         $parent2child[$parentid]["childselcount"] += count($foundchildren);
+        if (count($data) >= 4) {
+          $parent2child[$parentid]["childrentypeinfo"][$childid] = array("type" => $data[2], "info" => $data[3]);
+        }
 
         if (array_key_exists("singleparentid", $parent2child[$parentid])
            && (array_key_exists("usesingleparent", $parent2child[$parentid]) && $parent2child[$parentid]["usesingleparent"])) {
           $foundparentid = $parent2child[$parentid]["singleparentid"];
           foreach ($foundchildren as $foundchild) {
             if ($foundchild === $foundparentid) {
-              $logfunction(t("Child (@childid) with itself as parent (@parentid) is not allowed", 
+              $logfunction(t("Child (@childid) with itself as parent (@parentid) is not allowed",
                 array(
                   "@childid" => $childid,
                   "@parentid" => $parentid,
@@ -149,7 +157,7 @@ function ubl_batch_compound_read_csv($csvfilepath, $logfunction, $onlypids = FAL
           if ($childobject) {
             $part_of = $childobject->relationships->get(FEDORA_RELS_EXT_URI, $rels_predicate);
             // This object is part of a compound object.
-            if (!empty($part_of) && count($part_of) > 0) {
+            if (!empty($part_of) && count($part_of) > 0 && $part_of[0]['object']['value'] !== $foundparentid) {
               $logfunction(t("Child (@foundchild, found for '@childid') already has a parent (@parentid)",
                 array(
                   "@foundchild" => $foundchild,
@@ -166,6 +174,26 @@ function ubl_batch_compound_read_csv($csvfilepath, $logfunction, $onlypids = FAL
       }
     }
     fclose($fh);
+
+    foreach ($parent2child as $parendid => $childreninfo) {
+      $currenttype = NULL;
+      if (count($childreninfo["childrentypeinfo"]) > 0) {
+        foreach ($childreninfo["childrentypeinfo"] as $childid => $typeinfo) {
+          if ($currenttype === NULL) {
+            $currenttype = $typeinfo["type"];
+          }
+          elseif ($currenttype !== $typeinfo["type"]) {
+            $logfunction(t("Child (@childid) has other type (@childtype) than other children (@firstchildtype) of parent @parentid.",
+              array(
+                "@childid" => $childid,
+                "@parentid" => $parentid,
+                "@childtype" => $typeinfo["type"],
+                "@firstchildtype" => $currenttype,
+              )), 'error');
+          }
+        }
+      }
+    }
   }
   return $parent2child;
 }
@@ -200,9 +228,9 @@ function ubl_batch_compound_make_batch(array $parent2child) {
  * Make the compound for one parentid and the children that were selected.
  */
 function ubl_batch_compound_batch_set_children($oneparent2children, $parentid, &$context) {
+  module_load_include('inc', 'islandora_compound_object', 'includes/compound_types');
   module_load_include('inc', 'islandora_compound_object', 'includes/manage.form');
   module_load_include('inc', 'islandora_basic_collection', 'includes/utilities');
-  module_load_include('inc', 'islandora', 'includes/utilities');
   module_load_include('inc', 'islandora');
 
   $parent = FALSE;
@@ -217,10 +245,12 @@ function ubl_batch_compound_batch_set_children($oneparent2children, $parentid, &
       }
     }
   }
+  if (count($childids) > 0) {
+    $firstchildid = $childids[0];
+  }
+  $needsparentcheck = ($parent !== FALSE);
   if ($parent === FALSE) {
-    if (count($childids) > 0) {
-      $firstchildid = $childids[0];
-
+    if (isset($firstchildid)) {
       $firstchild = islandora_object_load($firstchildid);
       if ($firstchild) {
         $collection = islandora_object_load('islandora:compound_collection');
@@ -241,15 +271,80 @@ function ubl_batch_compound_batch_set_children($oneparent2children, $parentid, &
 
   $context['message'] = t('Generating compound object @parentid', array('@parentid' => $parent->id));
 
-  $child_objects = array();
+  if (isset($oneparent2children["childrentypeinfo"][$firstchildid]["type"]) && function_exists("islandora_compound_object_set_type")) {
+    $type = $oneparent2children["childrentypeinfo"][$firstchildid]["type"];
+
+    $shouldchangeparenttype = TRUE;
+    if ($needsparentcheck) {
+      $currenttype = islandora_compound_object_get_type($parent);
+      if ($currenttype === $type) {
+        $shouldchangeparenttype = FALSE;
+      }
+    }
+    if ($shouldchangeparenttype) {
+      islandora_compound_object_set_type($parent, $type);
+    }
+  }
+
+  $objecttypes = islandora_compound_object_types();
+  $type = "";
+  $rels_predicate = variable_get('islandora_compound_object_relationship', 'isConstituentOf');
+  $insert_seq = 0;
+  $escaped_parent_id = str_replace(':', '_', $parent->id);
+  $compounds = array();
   foreach ($childids as $childid) {
     $child_object = islandora_object_load($childid);
     if ($child_object) {
-      $child_objects[] = $child_object;
+      $insert_seq++;
+
+      $compounds[$childid] = array("weight" => $insert_seq, "object" => $child_object);
+      if (isset($oneparent2children["childrentypeinfo"][$childid]["type"]) && function_exists("islandora_compound_object_update_relation")) {
+        $type = $oneparent2children["childrentypeinfo"][$childid]["type"];
+        if (isset($objecttypes[$type]['relations']['predicate'])) {
+          $predicate = $objecttypes[$type]['relations']['predicate'];
+          $relvalue = $oneparent2children["childrentypeinfo"][$childid]["info"];
+          $compounds[$childid]["relation"] = $relvalue;
+          $compounds[$childid]["predicate"] = $predicate;
+        }
+      }
     }
   }
-  islandora_compound_object_add_parent($child_objects, array($parent->id));
 
+  if (isset($objecttypes[$type]['comparefunction'])) {
+    $comparefunc = $objecttypes[$type]['comparefunction'];
+    uasort($compounds, $comparefunc);
+  }
+
+  $insert_seq = 0;
+  foreach ($compounds as $childid => $info) {
+    $child_object = $info["object"];
+
+    $shouldcommit = FALSE;
+    $child_object->relationships->autoCommit = FALSE;
+    $fedorarels = $child_object->relationships->get(FEDORA_RELS_EXT_URI, $rels_predicate);
+    if (count($fedorarels) == 0 || (isset($fedorarels[0]['object']['value']) && $fedorarels[0]['object']['value'] != $parent->id)) {
+      $child_object->relationships->remove(FEDORA_RELS_EXT_URI, $rels_predicate);
+      $child_object->relationships->add(FEDORA_RELS_EXT_URI, $rels_predicate, $parent->id);
+      $shouldcommit = TRUE;
+    }
+    $islandorarels = $child_object->relationships->get(ISLANDORA_RELS_EXT_URI, "isSequenceNumberOf$escaped_parent_id");
+    if (count($islandorarels) == 0 || (isset($islandorarels[0]['object']['value']) && $islandorarels[0]['object']['value'] != $insert_seq)) {
+      $child_object->relationships->remove(ISLANDORA_RELS_EXT_URI, "isSequenceNumberOf$escaped_parent_id");
+      $child_object->relationships->add(ISLANDORA_RELS_EXT_URI, "isSequenceNumberOf$escaped_parent_id", $insert_seq, RELS_TYPE_PLAIN_LITERAL);
+      $shouldcommit = TRUE;
+    }
+    if (isset($info["predicate"], $info["relation"]) && function_exists("islandora_compound_object_update_relation")) {
+      $relation = $info["predicate"];
+      $relvalue = $info["relation"];
+      $hascommitted = islandora_compound_object_update_relation($parent->id, $childid, $relation, $relvalue, $context);
+      if ($shouldcommit) {
+        $shouldcommit = !$hascommitted;
+      }
+    }
+    if ($shouldcommit) {
+      $child_object->relationships->commitRelationships();
+    }
+  }
   islandora_compound_object_update_parent_thumbnail($parent);
 }
 
@@ -321,7 +416,7 @@ function find_fedora_object_ids($identifier, $isvalidpid = FALSE, $exactmatch = 
   $objectids = array();
   for ($i = 0; $i < $numfound && $i < $objectcount; $i++) {
     $objid = $r['response']['objects'][$i]['PID'];
-    
+
     if ($exactmatch) {
       $hasexactmatch = FALSE;
       $solrdoc = $r['response']['objects'][$i]['solr_doc'];
