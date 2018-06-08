@@ -122,6 +122,9 @@ function ubl_batch_compound_read_csv($csvfilepath, $logfunction, $onlypids = FAL
         $parent2child[$parentid]["childselcount"] += count($foundchildren);
         if (count($data) >= 4) {
           $parent2child[$parentid]["childrentypeinfo"][$childid] = array("type" => $data[2], "info" => $data[3]);
+          foreach ($foundchildren as $foundchildid) {
+            $parent2child[$parentid]["childrentypeinfo"][$foundchildid] = array("type" => $data[2], "info" => $data[3]);
+          }
         }
 
         if (array_key_exists("singleparentid", $parent2child[$parentid])
