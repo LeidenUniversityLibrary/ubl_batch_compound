@@ -234,7 +234,7 @@ function ubl_batch_compound_batch_set_children($oneparent2children, $parentid, &
   module_load_include('inc', 'islandora_compound_object', 'includes/compound_types');
   module_load_include('inc', 'islandora_compound_object', 'includes/manage.form');
   module_load_include('inc', 'islandora_basic_collection', 'includes/utilities');
-  module_load_include('inc', 'islandora');
+  module_load_include('inc', 'islandora', 'includes/utilities');
 
   $parent = FALSE;
   if (array_key_exists('singleparentid', $oneparent2children) && (array_key_exists('usesingleparent', $oneparent2children) && $oneparent2children['usesingleparent'])) {
@@ -366,8 +366,8 @@ function ubl_batch_compound_batch_set_children_finished() {
  */
 function find_fedora_object_ids($identifier, $isvalidpid = FALSE, $exactmatch = FALSE, $query_field = FALSE) {
   module_load_include('inc', 'islandora', 'includes/utilities');
-  module_load_include('inc', 'islandora_solr_search', 'includes/query_processor');
-  module_load_include('inc', 'islandora_solr_search', 'includes/utilities');
+  module_load_include('inc', 'islandora_solr', 'includes/query_processor');
+  module_load_include('inc', 'islandora_solr', 'includes/utilities');
 
   static $alreadyfound = array();
 
