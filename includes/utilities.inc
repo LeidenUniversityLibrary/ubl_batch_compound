@@ -73,6 +73,7 @@ function ubl_batch_compound_read_csv($csvfilepath, $logfunction, $onlypids = FAL
 
       $foundparents = find_fedora_object_ids($parentid, $onlypids, $exactmatch, $solrfield);
       $foundchildren = find_fedora_object_ids($childid, $onlypids, $exactmatch, $solrfield);
+      $foundparentid = NULL;
 
       if (count($foundchildren) == 0) {
         $logfunction(t("Found no children for id '@childid'", array("@childid" => $childid)), 'warning');
