@@ -257,7 +257,9 @@ function ubl_batch_compound_batch_set_children($oneparent2children, $parentid, &
     if (isset($firstchildid)) {
       $firstchild = islandora_object_load($firstchildid);
       if ($firstchild) {
-        $collection = islandora_object_load('islandora:compound_collection');
+        $firstchildparents = $firstchild->getParents();
+        $colid = (count($firstchildparents) === 1)?$firstchildparents[0]:'islandora:compound_collection';
+        $collection = islandora_object_load($colid);
         $tuque = islandora_get_tuque_connection();
         $parent = $tuque->repository->constructObject(islandora_get_namespace($firstchild->id));
         $parent->label = $parentid;
