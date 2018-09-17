@@ -340,16 +340,13 @@ function ubl_batch_compound_batch_set_children($oneparent2children, $parentid, &
       $child_object->relationships->add(ISLANDORA_RELS_EXT_URI, "isSequenceNumberOf$escaped_parent_id", $insert_seq, RELS_TYPE_PLAIN_LITERAL);
       $shouldcommit = TRUE;
     }
+    if ($shouldcommit) {
+      $child_object->relationships->commitRelationships();
+    }
     if (isset($info["predicate"], $info["relation"]) && function_exists("islandora_compound_object_update_relation")) {
       $relation = $info["predicate"];
       $relvalue = $info["relation"];
-      $hascommitted = islandora_compound_object_update_relation($parent->id, $childid, $relation, $relvalue, $context);
-      if ($shouldcommit) {
-        $shouldcommit = !$hascommitted;
-      }
-    }
-    if ($shouldcommit) {
-      $child_object->relationships->commitRelationships();
+      islandora_compound_object_update_relation($parent->id, $childid, $relation, $relvalue, $context);
     }
   }
   islandora_compound_object_update_parent_thumbnail($parent);
