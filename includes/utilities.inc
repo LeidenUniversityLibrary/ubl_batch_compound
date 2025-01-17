@@ -411,7 +411,7 @@ function find_fedora_object_ids($identifier, $isvalidpid = FALSE, $exactmatch = 
     return $alreadyfound[$search];
   }
 
-  $qp->buildAndExecuteQuery($search, NULL, FALSE);
+  $qp->buildAndExecuteQuery($search, array('limit' => 1000), FALSE);
 
   $r = $qp->islandoraSolrResult;
   $numfound = $r['response']['numFound'];
@@ -425,8 +425,18 @@ function find_fedora_object_ids($identifier, $isvalidpid = FALSE, $exactmatch = 
       $hasexactmatch = FALSE;
       $solrdoc = $r['response']['objects'][$i]['solr_doc'];
       if ($query_field) {
-        if ($solrdoc[$query_field] === $identifier) {
-          $hasexactmatch = TRUE;
+        if (is_array($solrdoc[$query_field])) {
+          foreach ($solrdoc[$query_field] as $sv) {
+            if ($sv === $identifier) {
+              $hasexactmatch = TRUE;
+              break;
+            }
+          }
+        }
+        else {
+          if ($solrdoc[$query_field] === $identifier) {
+            $hasexactmatch = TRUE;
+          }
         }
       }
       else {
